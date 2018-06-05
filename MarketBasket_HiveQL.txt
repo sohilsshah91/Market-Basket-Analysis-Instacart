@@ -1,0 +1,37 @@
+CREATE TABLE orders (order_id int, user_id int, eval_set string, order_number int, order_hour_of_day int, days_since_prior double) row format delimited fields terminated by ',';
+LOAD DATA INPATH '/user/sss857/instacart/data/orders.csv' INTO TABLE orders;
+ALTER TABLE orders SET TBLPROPERTIES ("skip.header.line.count"="1");
+
+CREATE TABLE products (product_id int, product_name string, aisle_id int, department_id int) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',';
+LOAD DATA INPATH '/user/sss857/instacart/data/products.csv' INTO TABLE products;
+ALTER TABLE products SET TBLPROPERTIES ("skip.header.line.count"="1");
+
+CREATE TABLE order_products (order_id int, product_id int, add_to_cart_order int, reordered int) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',';
+LOAD DATA INPATH '/user/sss857/instacart/data/order_products_train.csv' INTO TABLE order_products;
+ALTER TABLE order_products SET TBLPROPERTIES ("skip.header.line.count"="1");
+
+CREATE TABLE aisles (aisle_id int, aisle string) ROW FORMAT DELIMITED FIELDS terminated BY ',';
+LOAD DATA INPATH '/user/sss857/instacart/data/aisles.csv' INTO TABLE aisles;
+ALTER TABLE aisles SET TBLPROPERTIES ("skip.header.line.count"="1");
+
+CREATE TABLE departments (department_id int, department string) ROW FORMAT DELIMITED FIELDS terminated BY ',';
+LOAD DATA INPATH '/user/sss857/instacart/data/departments.csv' INTO TABLE departments;
+ALTER TABLE departments SET TBLPROPERTIES ("skip.header.line.count"="1");
+
+
+-- JOINS --
+CREATE TABLE prod1 AS
+SELECT p.product_id, p.product_name, p.department_id, a.aisle 
+FROM products p JOIN aisles a ON (p.aisle_id = a.aisle_id);
+
+CREATE TABLE prod2 AS
+SELECT p1.product_id, p1.product_name, p1.aisle, d.department 
+FROM prod1 p1 JOIN departments d ON (p1.department_id = d.department_id);
+
+CREATE TABLE order_products_merged AS 
+SELECT p2.product_id, p2.product_name, p2.aisle, p2.department, op.order_id, op.add_to_cart_order, op.reordered
+FROM prod2 p2 JOIN order_products op ON (p2.product_id = op.product_id);
+
+CREATE TABLE order_products_final AS 
+SELECT op1.product_id, op1.product_name, op1.aisle, op1.department, op1.order_id, op1.add_to_cart_order, op1.reordered, o.user_id, o.order_hour_of_day, o.days_since_prior
+FROM order_products_merged op1 JOIN orders o ON (op1.order_id = o.order_id);
